@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@elevenlabs/react": "^0.12.1",
+    "framer-motion": "^12.23.26",
+    "lucide-react": "^0.559.0",
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1"
