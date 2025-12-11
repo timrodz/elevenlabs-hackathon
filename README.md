@@ -1,4 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jamie Meeting Assistant
+
+Jamie seamlessly integrates into your workflow, providing intelligent document access exactly when you need it—without interrupting the flow of your conversations.
+
+## Key Features
+
+### Intelligent Document Search
+Jamie monitors your meeting conversations in the background, understanding context and topics to surface relevant documents from your company repository. Simply say "Jamie, pull that up" to activate document search based on your recent discussion.
+
+### Seamless Workflow Integration
+- **Real-time Support**: Get immediate access to the documents you need during live discussions
+- **Passive Listening**: Jamie works quietly in the background, transcribing conversations without disrupting meeting flow
+- **Context Awareness**: Understands meeting topics and conversation context to find the most relevant files
+
+### Quick Document Access
+- **Document Preview**: View relevant content at a glance before opening
+- **Google Docs Integration**: Direct links to open documents instantly in Google Docs
+- **No Workflow Interruption**: Move from conversation to document access without missing a beat
+
+## How It Works
+
+1. **Background Transcription**: Jamie listens to and transcribes all meeting conversations
+2. **Context Understanding**: Analyzes discussion topics and identifies when documents might be helpful
+3. **Voice Activation**: Trigger document search with simple commands like "Jamie, pull that up"
+4. **Instant Results**: Preview and access relevant documents from your company repository in seconds
+
+---
+
+*Focus on the conversation. Let Jamie handle the rest.*
+
+
+
+This is based on a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
