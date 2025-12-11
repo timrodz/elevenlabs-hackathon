@@ -2,7 +2,7 @@
 "use client";
 
 import { useConversation, useScribe } from "@elevenlabs/react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Cpu } from "lucide-react";
 
@@ -33,6 +33,10 @@ export function VoiceAssistant() {
     string | null
   >(null);
   const [scribeToken, setScribeToken] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const currentTranscriptRef = useRef("");
+  currentTranscriptRef.current = currentPartialTranscript ?? "";
 
   // Fetch scribe token on mount
   useEffect(() => {
@@ -59,9 +63,11 @@ export function VoiceAssistant() {
     modelId: "scribe_v2_realtime",
     token: scribeToken || undefined,
     onPartialTranscript: (data) => {
+      console.log("Partial Transcript:", data.text);
       setCurrentPartialTranscript(data.text);
     },
-    onCommittedTranscript: (data) => {
+    onCommittedTranscript: async (data) => {
+      console.log("Committed Transcript:", data.text);
       setCurrentPartialTranscript(null);
       setTranscripts((prev) => [...prev, data.text]);
     },
@@ -121,6 +127,69 @@ export function VoiceAssistant() {
         setVisibleDocuments(DOCUMENTS);
         setShowGalaxy(true);
         setGalaxyActiveDocId(null);
+      },
+      summarizeMeeting: async (): Promise<string> => {
+        setIsSummarizing(true);
+        setSummary(null);
+
+        // Collect all transcripts including current partial
+        const allTranscripts = [...transcripts];
+        if (currentTranscriptRef.current) {
+          allTranscripts.push(currentTranscriptRef.current);
+        }
+
+        console.log("All Transcripts:", allTranscripts, {
+          transcripts,
+          currentPartialTranscript: currentTranscriptRef.current,
+        });
+
+        if (allTranscripts.length === 0) {
+          setIsSummarizing(false);
+          return "No transcriptions available to summarize.";
+        }
+
+        try {
+          const response = await fetch("/api/summarize-transcriptions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ transcripts: allTranscripts }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setSummary(data.summary);
+            console.log("Meeting summary:", data.summary);
+            return data.summary || "Summary generated successfully.";
+          } else {
+            const errorData = await response.json();
+            console.error("Failed to summarize meeting:", errorData);
+            const errorMessage =
+              errorData.error || "Failed to summarize meeting";
+            setError(errorMessage);
+            return `I encountered an error: ${errorMessage}`;
+          }
+        } catch (err) {
+          console.error("Error summarizing meeting:", err);
+          const errorMessage = "Error summarizing meeting";
+          setError(errorMessage);
+          return `I encountered an error while summarizing the meeting.`;
+        } finally {
+          setIsSummarizing(false);
+        }
+      },
+      openLink: async (): Promise<string> => {
+        try {
+          window.open(
+            "https://drive.google.com/file/d/1aU1h32TeBr7jnsRw_r1Q0pz1L8bCLypr/view?usp=share_link](https://drive.google.com/file/d/1aU1h32TeBr7jnsRw_r1Q0pz1L8bCLypr/view?usp=share_link",
+            "_blank"
+          );
+          return "Opening link...";
+        } catch (err) {
+          console.error("Error opening link:", err);
+          return "I encountered an error while opening the link.";
+        }
       },
       fetchDocuments: async (
         parameters: { name: string } | string
@@ -319,6 +388,26 @@ export function VoiceAssistant() {
             </div>
           )}
         </div>
+
+        {/* Summary Display */}
+        {(summary || isSummarizing) && (
+          <div className="absolute top-24 left-0 right-0 max-w-4xl mx-auto px-4 z-40">
+            <div className="bg-indigo-50/90 backdrop-blur-sm rounded-lg border border-indigo-200/50 shadow-lg p-4">
+              <h3 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">
+                Meeting Summary
+              </h3>
+              {isSummarizing ? (
+                <p className="text-sm text-indigo-600 italic">
+                  Generating summary...
+                </p>
+              ) : (
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {summary}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Transcript Display */}
         {connectionStatus === "connected" &&
