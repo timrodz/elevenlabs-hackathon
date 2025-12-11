@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-/* eslint-disable react-hooks/preserve-manual-memoization */
-import { useConversation } from "@elevenlabs/react";
-import { useState, useCallback } from "react";
+import { useConversation, useScribe } from "@elevenlabs/react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Cpu } from "lucide-react";
 
@@ -28,18 +27,72 @@ export function VoiceAssistant() {
     null
   );
 
+  // State for speech-to-text transcription
+  const [transcripts, setTranscripts] = useState<string[]>([]);
+  const [currentPartialTranscript, setCurrentPartialTranscript] = useState<
+    string | null
+  >(null);
+  const [scribeToken, setScribeToken] = useState<string | null>(null);
+
+  // Fetch scribe token on mount
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const response = await fetch("/api/speech-to-text", {
+          method: "POST",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setScribeToken(data.token);
+        } else {
+          console.error("Failed to fetch scribe token");
+        }
+      } catch (err) {
+        console.error("Error fetching scribe token:", err);
+      }
+    };
+    fetchToken();
+  }, []);
+
+  // Initialize useScribe hook
+  const scribe = useScribe({
+    modelId: "scribe_v2_realtime",
+    token: scribeToken || undefined,
+    onPartialTranscript: (data) => {
+      setCurrentPartialTranscript(data.text);
+    },
+    onCommittedTranscript: (data) => {
+      setCurrentPartialTranscript(null);
+      setTranscripts((prev) => [...prev, data.text]);
+    },
+  });
+
   const conversation = useConversation({
     agentId: AGENT_ID,
     onConnect: () => {
       setConnectionStatus("connected");
       setAgentStatus("listening");
       setError(null);
+      // Connect scribe when conversation connects
+      if (scribeToken) {
+        scribe.connect({
+          token: scribeToken,
+          microphone: {
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+      }
     },
     onDisconnect: () => {
       setConnectionStatus("disconnected");
       setAgentStatus("idle");
       setShowGalaxy(false);
       setVisibleDocuments([]);
+      // Disconnect scribe and clear transcripts
+      scribe.disconnect();
+      setTranscripts([]);
+      setCurrentPartialTranscript(null);
     },
     onError: (err) => {
       console.error(err);
@@ -154,7 +207,7 @@ export function VoiceAssistant() {
         setError("Failed to access microphone or connect.");
       }
     }
-  }, [connectionStatus]);
+  }, [connectionStatus, conversation]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-8 flex flex-col items-center relative overflow-hidden">
@@ -170,10 +223,10 @@ export function VoiceAssistant() {
           </div>
           <div>
             <h1 className="text-sm font-bold text-slate-800 tracking-wide">
-              AETHER
+              JAMIE
             </h1>
             <p className="text-[10px] text-slate-500 font-medium">
-              Contextual Meeting Assistant
+              Your Meeting Assistant
             </p>
           </div>
         </div>
@@ -266,6 +319,30 @@ export function VoiceAssistant() {
             </div>
           )}
         </div>
+
+        {/* Transcript Display */}
+        {connectionStatus === "connected" &&
+          (transcripts.length > 0 || currentPartialTranscript) && (
+            <div className="absolute bottom-32 left-0 right-0 max-w-4xl mx-auto px-4 z-40">
+              <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-slate-200/50 shadow-lg p-4 max-h-48 overflow-y-auto">
+                <div className="space-y-2">
+                  {transcripts.map((transcript, index) => (
+                    <p
+                      key={index}
+                      className="text-sm text-slate-700 leading-relaxed"
+                    >
+                      {transcript}
+                    </p>
+                  ))}
+                  {currentPartialTranscript && (
+                    <p className="text-sm text-slate-500 italic leading-relaxed">
+                      {currentPartialTranscript}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
       </main>
     </div>
   );
